@@ -178,6 +178,71 @@ witchWalking =
     , frameDuration = 100 -- Milliseconds per frame; adjust as needed
     }
 
+
+
+kingIdle : Model 
+kingIdle = 
+    { sprites =
+        Array.fromList
+            [ "assets/KingIdle/Idle_000.png"
+            , "assets/KingIdle/Idle_001.png"
+            , "assets/KingIdle/Idle_002.png"
+            , "assets/KingIdle/Idle_003.png"
+            , "assets/KingIdle/Idle_004.png"
+            , "assets/KingIdle/Idle_005.png"
+            , "assets/KingIdle/Idle_006.png"
+            , "assets/KingIdle/Idle_007.png"
+            , "assets/KingIdle/Idle_008.png"
+            , "assets/KingIdle/Idle_009.png"
+            , "assets/KingIdle/Idle_010.png"
+            , "assets/KingIdle/Idle_011.png"
+            , "assets/KingIdle/Idle_012.png"
+            , "assets/KingIdle/Idle_013.png"
+            , "assets/KingIdle/Idle_014.png"
+            , "assets/KingIdle/Idle_015.png"
+            , "assets/KingIdle/Idle_016.png"
+            , "assets/KingIdle/Idle_017.png"
+            ]
+    , currentSpriteIndex = 0
+    , lastFrameTime = 0
+    , frameDuration = 100
+    }
+
+kingWalking : Model 
+kingWalking = 
+    { sprites =
+        Array.fromList
+            [ "assets/kingWalking/Walking_000.png" -- Replace these with the paths to your sprite images
+            , "assets/kingWalking/Walking_001.png"
+            , "assets/kingWalking/Walking_002.png"
+            , "assets/kingWalking/Walking_003.png" -- Replace these with the paths to your sprite images
+            , "assets/kingWalking/Walking_004.png"
+            , "assets/kingWalking/Walking_005.png"
+            , "assets/kingWalking/Walking_006.png" -- Replace these with the paths to your sprite images
+            , "assets/kingWalking/Walking_007.png"
+            , "assets/kingWalking/Walking_008.png"
+            , "assets/kingWalking/Walking_009.png" -- Replace these with the paths to your sprite images
+            , "assets/kingWalking/Walking_010.png"
+            , "assets/kingWalking/Walking_011.png"
+            , "assets/kingWalking/Walking_012.png"
+            , "assets/kingWalking/Walking_013.png"
+            , "assets/kingWalking/Walking_014.png"
+            , "assets/kingWalking/Walking_015.png"
+            , "assets/kingWalking/Walking_016.png"
+            , "assets/kingWalking/Walking_017.png"
+            , "assets/kingWalking/Walking_018.png"
+            , "assets/kingWalking/Walking_019.png"
+            , "assets/kingWalking/Walking_020.png"
+            , "assets/kingWalking/Walking_021.png"
+            , "assets/kingWalking/Walking_022.png"
+            , "assets/kingWalking/Walking_023.png"
+            , "assets/kingWalking/Walking_024.png"
+            ]
+    , currentSpriteIndex = 0
+    , lastFrameTime = 0
+    , frameDuration = 100 -- Milliseconds per frame; adjust as needed
+    }
+
 rock1 : Model
 rock1 =
     { sprites =

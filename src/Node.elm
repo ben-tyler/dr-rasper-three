@@ -7,7 +7,6 @@ import Keys
 import Process exposing (Id)
 import Dict exposing (Dict)
 import String exposing (right)
-import Dialog exposing (Dialog)
 
 type Msg 
     = Animate Float
@@ -17,6 +16,7 @@ type Msg
 type Direction = Left | Right
 
 type Instruction = NoInstruction | MoveTo Domain.Position
+type EffectTrigger = NoEffect | StartDialog String Dialog 
 
 type alias Model = 
     { id : String
@@ -26,7 +26,7 @@ type alias Model =
     , direction : Direction
     , animations : Dict String Sprite.Model
     , animation : String
-    , currentDialog : DialogPart
+    , currentDialog : Dialog
     , instruction : Instruction
     , timer : Int
     }
@@ -84,8 +84,17 @@ runInstruction model =
             model
 
         MoveTo p -> 
+            let
+                fakeKeys = 
+                    if model.position.x == p.x then 
+                        Keys.downKeys
+                    else 
+                        if model.position.x < p.x then Keys.rightKeys else Keys.leftKeys
+         
+            in
             if p.x == model.position.x && p.y == model.position.y then 
                 { model | instruction = NoInstruction }
+                |> ( \ i -> update (ChangeState fakeKeys) i)
             else 
                 let
                     position = model.position
@@ -99,6 +108,7 @@ runInstruction model =
                         }
 
                 }
+                |> ( \ i -> update (ChangeState fakeKeys) i)
 
 viewDialog : Domain.Position ->  Model -> Domain.Camera -> Html Msg
 viewDialog respPos model camera = 
@@ -118,7 +128,7 @@ viewDialog respPos model camera =
             , style "width" "200px"
             , style "font-size" "14px"
             ] 
-            [h3 [] [text model.currentDialog.statement]]
+            [h3 [] [text <| case model.currentDialog of Dialog d -> d.statement]]
             
         ,if delay then 
             div [] []
@@ -132,20 +142,26 @@ viewDialog respPos model camera =
                 , style "width" "200px"
                 , style "font-size" "12px"
                 ] 
-                ( List.indexedMap ( \ i (s, d) -> div [] [text <| (String.fromInt <| i + 1) ++ " >> " ++ s] ) model.currentDialog.responses
+                ( List.indexedMap 
+                    ( \ i (s, d) -> div [] [text <| (String.fromInt <| i + 1) ++ " >> " ++ s] ) 
+                    (case model.currentDialog of Dialog fd -> fd.responses)
                 )
         ]
 
 
 
-dialogChoice : Int -> Model -> DialogPart
+dialogChoice : Int -> Model -> Dialog
 dialogChoice index model =    
+    let
+        d = case model.currentDialog of Dialog p -> p
+    in
+    
     case 
-        List.take index model.currentDialog.responses               -- [ 1, 2, 3 ]
+        List.take index d.responses               -- [ 1, 2, 3 ]
             |> List.reverse                    -- [ 3, 2, 1 ]
             |> List.head 
     of
-        Just (_, Dialog a) -> 
+        Just (_, a) -> 
             a
 
         Nothing -> 
@@ -245,48 +261,89 @@ type alias DialogPart =
     { statement : String
     , responses : List ( String, Dialog)
     , trigger : Instruction
+    , effectTrigger : EffectTrigger
     }
+
+
+offToWork = 
+    buildWE
+        "well, "
+        []
+        (StartDialog 
+            "king" 
+            (buildWT
+                "I have had trouble inserting this eye through my eyes holes"
+                [ ("my god what is wrong with you", buildWT "what nothing just my bloody eye hole" [] (MoveTo {x = 620, y = 200} ) ) 
+                ]
+                (MoveTo {x = 620, y = 200} )
+            )
+        )
 
 foobar = 
-    { statement = "Yes yes, come this way. I think you will be happy with how we are progressing with the preperations"
-    , responses = 
+    buildWT
+        "Yes yes, come this way. I think you will be happy with how we are progressing with the preperations"
         [   ("Thank you janice, you always meant a lot to me"
-            , Dialog 
-                { statement = "oh dear, I think can not handle the dialog system"
-                , responses = [
-                    ("yes that seems to be the case"
-                    , Dialog 
-                        { statement = "hmmm"
-                        , responses = []
-                        , trigger = MoveTo {x = 620, y = 500} 
-                        }
+            , buildBD 
+                "not now Dr Rasper, you have work to do"
+                [   ("yes... of course "
+                    , buildWT
+                        "well then get to it"
+                        [ ( "yes.. yes ok janice", offToWork)
+
+                        ]
+                        (MoveTo {x = 620, y = 500} )
                     )
-                ]
-                , trigger = NoInstruction
-                }
+
+                ] 
+
             )
         ,   ("Oh janice, you know I never thought much of you"
-            , Dialog 
-                { statement = "hmmm"
-                , responses = []
-                , trigger = MoveTo {x = 620, y = 500} 
-                }
+            , buildWT
+                "hmmmm"
+                [ ("well, i shoulf get to it", offToWork)
+                ]
+                (MoveTo {x = 620, y = 500} )
+                
             )
         ]
-    , trigger = MoveTo {x = 300, y = 500} 
-    }
+        (MoveTo {x = 300, y = 500})
+
+buildBD : String -> List (String, Dialog) -> Dialog
+buildBD statement responses = 
+    Dialog
+        { statement = statement
+        , responses = responses
+        , trigger = NoInstruction
+        , effectTrigger = NoEffect
+        }
+
+buildWT : String -> List (String, Dialog) -> Instruction -> Dialog
+buildWT statement responses trigger = 
+    Dialog
+        { statement = statement
+        , responses = responses
+        , trigger = trigger
+        , effectTrigger = NoEffect
+        }
+
+buildWE : String -> List (String, Dialog) -> EffectTrigger -> Dialog
+buildWE statement responses trigger = 
+    Dialog
+        { statement = statement
+        , responses = responses
+        , trigger = NoInstruction
+        , effectTrigger = trigger
+        }
 
 
-dialogSystem : DialogPart
+dialogSystem : Dialog
 dialogSystem = 
-    { statement = "Dr Rasper, nice to see you. I hope you are ready for the surgury"
-    , responses = 
+    buildBD
+        "Dr Rasper, nice to see you. I hope you are ready for the surgury"
         [ ("I have been studying..."
-          , Dialog foobar
+          , foobar
           )
         , ("As ready as a heart attack"
-          , Dialog foobar
+          , foobar
           )
         ]
-    , trigger = NoInstruction
-    }

@@ -12,7 +12,6 @@ import Node
 import Domain
 import Map
 import Combat
-import Dialog
 -- Model
 
 type GameState = Exploring | InCombat Combat.Model| InConversation String
@@ -26,7 +25,6 @@ type alias Model =
     , camera : Domain.Camera
     , map : Map.Model
     , gameState : GameState
-    , dialog : Dialog.Model
     }
 
 -- Update
@@ -37,7 +35,6 @@ type Msg
     | Node Node.Msg
     | Map Map.Msg
     | Combat Combat.Msg
-    | Dialog Dialog.Msg
     | KeyPressed String
 
 
@@ -88,91 +85,25 @@ gameLoop time model =
             ) model.npcs
             |> List.unzip
 
-        changedState = List.filter (\ i -> i /= Nothing) stateChages
-        {-
-        (newGameState, witch) = 
-             case (Node.checkCollisions nextPossiblePlayerPosition model.npcs, model.gameState) of
-                (Node.Collide ((Node.RightColide x)::xs), Exploring) ->  
-                    if x.id == "witch" then 
-                        ( InConversation "witch"
-                        , Node.update (Node.ChangeState Keys.leftKeys) x
-                        )
-                    else 
-                        (model.gameState, x)
-
-                (Node.Collide ((Node.LeftColide x)::xs), Exploring) ->  
-                    if x.id == "witch" then 
-                        ( InConversation "witch"
-                        , Node.update (Node.ChangeState Keys.rightKeys) x
-                        )
-                    else 
-                        (model.gameState, x)
-
-                (Node.Collide ((Node.LeftColide x)::xs), _) ->  
-                    if x.id == "witch" then 
-                        ( model.gameState
-                        , Node.update (Node.ChangeState Keys.rightKeys) x
-                        )
-                    else 
-                        (model.gameState, x)
-
-                (Node.Collide ((Node.RightColide x)::xs), _) ->  
-                    if x.id == "witch" then 
-                        ( model.gameState
-                        , Node.update (Node.ChangeState Keys.leftKeys) x
-                        )
-                    else 
-                        (model.gameState, x)
-
-                _ -> (model.gameState, Nothing)
-
-
-        nw = 
-            case model.gameState of 
-                InConversation w -> 
-                    Node.runInstruction model.npcs
-
-                _ -> witch
-
-        -}
+        gameState = 
+            case List.filter (\ i -> i /= Nothing) stateChages of
+                (Just x::_) -> x
+                _ -> model.gameState
     in
     { model
         | player = newPosition
-        , npcs = List.map (Node.update (Node.Animate time)) npcs
+        , npcs = npcs
+            |> List.map (Node.update (Node.Animate time)) 
             |> List.map (\ o -> Node.runInstruction o)
-            |> List.map ( \ o -> 
-                case o.instruction of
-                    Node.MoveTo p ->
-                        let
-                            fakeKeys = 
-                                if o.position.x == p.x then 
-                                    Keys.downKeys
-                                else 
-                                    if o.position.x < p.x then Keys.rightKeys else Keys.leftKeys
-                        in
-                        Node.update 
-                            (Node.ChangeState fakeKeys)
-                            o
-                    _ -> 
-                        Node.update 
-                            (Node.ChangeState Keys.noKeys)
-                            o
-                )
         , camera = 
             Keys.moveByKey model.wasd 1 model.camera
-        , gameState = 
-            case changedState of 
-                (Just x::_) -> x
-                _ -> model.gameState
-
+        , gameState = gameState
     }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Dialog d -> 
-            ({model | dialog = Dialog.update d model.dialog}, Cmd.none)
 
         Combat m -> 
             case model.gameState of 
@@ -212,20 +143,49 @@ update msg model =
                 InConversation c -> 
                     ( case String.toInt s of 
                         Just i -> 
-                            { model 
-                                | npcs = 
-                                    List.map ( \ j -> 
-                                        if j.id == c then 
-                                            let next = Node.dialogChoice i j in
-                                            { j 
-                                                | currentDialog = next
-                                                , instruction = next.trigger
-                                                , timer = 0
-                                            }
-                                        else
-                                            j
-                                    ) model.npcs
-                            }
+                            let
+                                (npcs, effects) = 
+                                    model.npcs
+                                    |> List.map ( \ j -> 
+                                            if j.id == c then 
+                                                let next = Node.dialogChoice i j in
+                                                ({ j 
+                                                    | currentDialog = next
+                                                    , instruction = case next of Node.Dialog n -> n.trigger
+                                                    , timer = 0
+                                                }, 
+                                                (case next of Node.Dialog n -> n.effectTrigger)
+                                                )
+                                            else
+                                                (j, Node.NoEffect)
+                                        ) 
+                                    |> List.unzip
+                                runEffect = 
+                                    case List.filter (\ igf -> igf /= Node.NoEffect) effects of
+                                        (x::_) -> 
+                                            case x of 
+                                                Node.NoEffect -> 
+                                                    { model | npcs = npcs }
+
+                                                Node.StartDialog idstring d -> 
+                                                    { model 
+                                                        | gameState = InConversation idstring
+                                                        , npcs = npcs
+                                                            |> List.map ( \ gfds -> 
+                                                                if gfds.id == idstring then 
+                                                                    { gfds | currentDialog = d }
+                                                                else 
+                                                                    gfds
+                                                            
+                                                                )
+                                                    }
+
+                                        _ -> { model | npcs = npcs }
+
+                                
+
+                            in
+                            runEffect
 
                         _ -> model
 
@@ -315,6 +275,14 @@ init _ =
                 {x = 300, y = 320} 
                 True 
                 20
+            , Node.nodeBuilder
+                "king"
+                [ ("Idle", Sprite.kingIdle  )
+                , ("Walking", Sprite.kingWalking)
+                ]
+                {x = 600, y = 600} 
+                True 
+                20
             ]
       , arrows = Keys.noKeys
       , fps = 0
@@ -322,7 +290,6 @@ init _ =
       , wasd = Keys.noKeys
       , map = Map.Model <| Map.parseMap Map.map1
       , gameState = Exploring
-      , dialog = Dialog.initialModel
       }
     , Cmd.none
     )
